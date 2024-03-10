@@ -3,7 +3,17 @@ from typing import Type
 from contexts import Context
 
 
-def play(policy, side, game: Type[Context]):
+def print_info(info):
+    for key, value in info.items():
+        if isinstance(value, dict):
+            print(f'{key}:')
+            for k, v in sorted(value.items(), key=lambda entry: entry[1], reverse=True):
+                print(f'\t{k+1}: {v}')
+        else:
+            print(f'{key}: {value}')
+
+
+def play(policy, side, game: Type[Context], verbose=False):
     win_x = 0
     win_o = 0
     while True:
@@ -17,6 +27,9 @@ def play(policy, side, game: Type[Context]):
         while not context.done:
             if context.move == side:
                 action, info = policy(context)
+                if verbose:
+                    print_info(info)
+                print(f'Made action {action+1}')
             else:
                 action = None
                 while action not in context.actions:

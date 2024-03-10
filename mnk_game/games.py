@@ -76,6 +76,10 @@ class TicTacToe(Context):
             board_o += 2 ** action
         return board_x, board_o
 
+    def num_actions(self):
+        return TicTacToe.NUM_ACTIONS
+
+
     def render(self):
 
         def cell(x, o, pos):
