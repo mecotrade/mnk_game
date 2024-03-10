@@ -8,13 +8,14 @@ class Context:
     def new():
         raise NotImplementedError
 
+    @staticmethod
+    def num_actions():
+        raise NotImplementedError
+
     def analyze(self) -> (float, bool, int, list):
         raise NotImplementedError
 
     def apply(self, action):
-        raise NotImplementedError
-
-    def num_actions(self):
         raise NotImplementedError
 
     def render(self):

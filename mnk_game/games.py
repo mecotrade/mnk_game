@@ -24,6 +24,10 @@ class TicTacToe(Context):
         return TicTacToe((0, 0))
 
     @staticmethod
+    def num_actions():
+        return TicTacToe.NUM_ACTIONS
+
+    @staticmethod
     def calculate_reward(board):
         for position in TicTacToe.WIN_POSITIONS:
             if board & position == position:
@@ -75,10 +79,6 @@ class TicTacToe(Context):
         else:
             board_o += 2 ** action
         return board_x, board_o
-
-    def num_actions(self):
-        return TicTacToe.NUM_ACTIONS
-
 
     def render(self):
 
