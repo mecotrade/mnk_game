@@ -5,9 +5,9 @@ from policies import TabularQPolicy, TabularVPolicy
 from contexts import Context
 
 
-def fit_q(policy: TabularQPolicy, game: Type[Context], num_rollouts):
-    numbers = dict()
-    for _ in tqdm(range(num_rollouts)):
+def fit_q(policy: TabularQPolicy, game: Type[Context], selfplay_count):
+    visit_counts = dict()
+    for _ in tqdm(range(selfplay_count)):
         context = game.new()
         rollout = list()
         while not context.done:
@@ -15,16 +15,16 @@ def fit_q(policy: TabularQPolicy, game: Type[Context], num_rollouts):
             rollout.append((context.board, action))
             context = context(action)
         for board, action in rollout:
-            action_numbers = numbers.setdefault(board, [0] * game.num_actions())
-            action_numbers[action] += 1
+            action_visit_counts = visit_counts.setdefault(board, [0] * game.num_actions())
+            action_visit_counts[action] += 1
             action_rewards = policy.q_function.setdefault(board, [0.] * game.num_actions())
-            action_rewards[action] += (context.reward - action_rewards[action]) / action_numbers[action]
+            action_rewards[action] += (context.reward - action_rewards[action]) / action_visit_counts[action]
             policy.q_function[board] = action_rewards
 
 
-def policy_iteration(policy: TabularVPolicy, game: Type[Context], num_rollouts, batch_size, learning_rate):
-    num_batches = num_rollouts // batch_size
-    for _ in tqdm(range(num_batches)):
+def policy_iteration(policy: TabularVPolicy, game: Type[Context], selfplay_count, batch_size, learning_rate):
+    batch_count = selfplay_count // batch_size
+    for _ in tqdm(range(batch_count)):
         history = dict()
         for _ in range(batch_size):
             context = game.new()
@@ -40,9 +40,9 @@ def policy_iteration(policy: TabularVPolicy, game: Type[Context], num_rollouts, 
             policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
 
 
-def q_policy_iteration(policy: TabularQPolicy, game: Type[Context], num_rollouts, batch_size, learning_rate):
-    num_batches = num_rollouts // batch_size
-    for _ in tqdm(range(num_batches)):
+def q_policy_iteration(policy: TabularQPolicy, game: Type[Context], selfplay_count, batch_size, learning_rate):
+    batch_count = selfplay_count // batch_size
+    for _ in tqdm(range(batch_count)):
         history = dict()
         for _ in range(batch_size):
             context = game.new()

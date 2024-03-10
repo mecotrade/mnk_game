@@ -1,6 +1,6 @@
 from colorama import Fore, Style
 
-from contexts import Context
+from contexts import Context, ContextTree
 
 
 class TicTacToe(Context):
@@ -21,7 +21,7 @@ class TicTacToe(Context):
 
     @staticmethod
     def new():
-        return TicTacToe((0, 0))
+        return TicTacToe((0, 0), list())
 
     @staticmethod
     def num_actions():
@@ -114,3 +114,10 @@ class TicTacToe(Context):
                 print('Noughts win')
             else:
                 print('Draw')
+
+
+class TicTacToeTree(ContextTree, TicTacToe):
+
+    @staticmethod
+    def new():
+        return TicTacToeTree((0, 0), list())
