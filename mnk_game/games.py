@@ -19,13 +19,13 @@ class TicTacToe(Context):
         0b_001_010_100
     ]
 
-    @staticmethod
-    def new():
-        return TicTacToe((0, 0), list())
+    @classmethod
+    def new(cls):
+        return cls((0, 0))
 
-    @staticmethod
-    def num_actions():
-        return TicTacToe.NUM_ACTIONS
+    @classmethod
+    def num_actions(cls):
+        return cls.NUM_ACTIONS
 
     @staticmethod
     def calculate_reward(board):
@@ -50,12 +50,12 @@ class TicTacToe(Context):
 
         bits_x = TicTacToe.to_bits(board_x)
         bits_o = TicTacToe.to_bits(board_o)
-        nx = sum(bits_x)
-        no = sum(bits_o)
-        if nx == no and reward_x == 0:
+        x_count = sum(bits_x)
+        o_count = sum(bits_o)
+        if x_count == o_count and reward_x == 0:
             move = TicTacToe.X_MOVE
             reward = reward_o
-        elif nx == no + 1 and reward_o == 0:
+        elif x_count == o_count + 1 and reward_o == 0:
             move = TicTacToe.O_MOVE
             reward = reward_x
         else:
@@ -117,7 +117,131 @@ class TicTacToe(Context):
 
 
 class TicTacToeTree(ContextTree, TicTacToe):
+    pass
 
-    @staticmethod
-    def new():
-        return TicTacToeTree((0, 0), list())
+
+class MNKGame(Context):
+
+    WIDTH = None
+    HEIGHT = None
+    LINE = None
+
+    X_MOVE = 1
+    O_MOVE = -1
+
+    @classmethod
+    def new(cls):
+        return cls(([0] * cls.num_actions(), [0] * cls.num_actions()))
+
+    @classmethod
+    def num_actions(cls):
+        return cls.WIDTH * cls.HEIGHT
+
+    @classmethod
+    def calculate_reward(cls, board):
+        # horizontal
+        for row in range(cls.HEIGHT):
+            for column in range(cls.WIDTH - cls.LINE + 1):
+                shift = row * cls.WIDTH + column
+                if sum(board[shift:shift + cls.LINE]) == cls.LINE:
+                    return 1
+        # vertical
+        for row in range(cls.HEIGHT - cls.LINE + 1):
+            for column in range(cls.WIDTH):
+                shift = row * cls.WIDTH + column
+                if sum(board[shift:cls.LINE * cls.WIDTH + shift:cls.WIDTH]) == cls.LINE:
+                    return 1
+        # main diagonal
+        for row in range(cls.HEIGHT - cls.LINE + 1):
+            for column in range(cls.WIDTH - cls.LINE + 1):
+                shift = row * cls.WIDTH + column
+                if sum(board[cls.LINE - 1 + shift:cls.LINE - 1 + shift + cls.LINE * (cls.WIDTH - 1):cls.WIDTH - 1]) == cls.LINE:
+                    return 1
+        # anti-diagonal
+        for row in range(cls.HEIGHT - cls.LINE + 1):
+            for column in range(cls.WIDTH - cls.LINE + 1):
+                shift = row * cls.WIDTH + column
+                if sum(board[shift:shift + cls.LINE * (cls.WIDTH + 1):cls.WIDTH + 1]) == cls.LINE:
+                    return 1
+        return 0
+
+    def analyze(self):
+        board_x, board_o = self.board
+        x_count = sum(board_x)
+        o_count = sum(board_o)
+
+        reward_x = self.calculate_reward(board_x)
+        reward_o = -self.calculate_reward(board_o)
+
+        if x_count == o_count and reward_x == 0:
+            move = MNKGame.X_MOVE
+            reward = reward_o
+        elif x_count == o_count + 1 and reward_o == 0:
+            move = MNKGame.O_MOVE
+            reward = reward_x
+        else:
+            move = None
+            reward = 0
+
+        actions = list()
+        for pos, (x, o) in enumerate(zip(board_x, board_o)):
+            if x == 0 and o == 0:
+                actions.append(pos)
+
+        done = reward != 0 or len(actions) == 0
+
+        return reward, done, move, actions
+
+    def apply(self, action):
+        board_x, board_o = self.board
+        board_x = board_x.copy()
+        board_o = board_o.copy()
+        if self.move == MNKGame.X_MOVE:
+            board_x[action] = 1
+        else:
+            board_o[action] = 1
+        return board_x, board_o
+
+    def render(self):
+
+        def cell(x, o, pos):
+            if x == 1:
+                return Fore.RED + ' X ' + Style.RESET_ALL
+            elif o == 1:
+                return Fore.BLUE + ' O ' + Style.RESET_ALL
+            else:
+                return Fore.YELLOW + f'{pos+1:^3}' + Style.RESET_ALL
+
+        board_x, board_o = self.board
+        cells = [cell(x, o, pos) for pos, (x, o) in enumerate(zip(board_x, board_o))]
+
+        border_line = '+'.join(['---'] * self.WIDTH)
+        print(f'+{border_line}+')
+        for row in range(0, len(cells), self.WIDTH):
+            table_row = '|'.join(cells[row:row + self.WIDTH])
+            print(f'|{table_row}|')
+            print(f'+{border_line}+')
+
+        if not self.done:
+            if self.move == MNKGame.X_MOVE:
+                print('Crosses move')
+            elif self.move == MNKGame.O_MOVE:
+                print('Noughts move')
+        else:
+            if self.reward == 1:
+                print('Crosses win')
+            elif self.reward == -1:
+                print('Noughts win')
+            else:
+                print('Draw')
+
+
+class MNKGame544(MNKGame):
+
+    WIDTH = 5
+    HEIGHT = 4
+    LINE = 4
+
+
+class MNKGame544Tree(ContextTree, MNKGame544):
+    pass

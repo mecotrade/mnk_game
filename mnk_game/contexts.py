@@ -1,16 +1,16 @@
 class Context:
 
-    def __init__(self, board, history: list):
+    def __init__(self, board, history: list | None = None):
         self.board = board
-        self.history = history
+        self.history = history or list()
         self.reward, self.done, self.move, self.actions = self.analyze()
 
-    @staticmethod
-    def new():
+    @classmethod
+    def new(cls):
         raise NotImplementedError
 
-    @staticmethod
-    def num_actions():
+    @classmethod
+    def num_actions(cls):
         raise NotImplementedError
 
     def analyze(self) -> (float, bool, int, list):
@@ -29,7 +29,7 @@ class Context:
 
 class ContextTree(Context):
 
-    def __init__(self, board, history: list):
+    def __init__(self, board, history: list | None = None):
         super().__init__(board, history)
         self.parent: ContextTree | None = None
         self.value = 0
