@@ -1,6 +1,6 @@
 from typing import Type
 
-from contexts import Context
+from contexts import Context, ContextTree
 
 
 def print_info(info):
@@ -33,7 +33,19 @@ def play(policy, side, game: Type[Context], verbose=False):
             else:
                 action = None
                 while action not in context.actions:
-                    human_input = input(f'Choose your move, or "q" for quit: ')
+                    if isinstance(context, ContextTree):
+                        human_input = input(f'Choose your move, "?" for hint, or "q" for quit: ')
+                        if human_input == '?':
+                            values = dict()
+                            visits = dict()
+                            for hint_action, child in enumerate(context.children):
+                                if child is not None:
+                                    values[hint_action] = child.value
+                                    visits[hint_action] = child.visits
+                            print_info({'values': values, 'visits': visits})
+                            continue
+                    else:
+                        human_input = input(f'Choose your move, or "q" for quit: ')
                     if human_input == 'q':
                         print('Buy-buy!')
                         return
