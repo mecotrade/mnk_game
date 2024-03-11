@@ -1,6 +1,6 @@
 import policies
 import train
-from games import TicTacToe, TicTacToeTree, MNKGame544Tree
+from games import TicTacToe, TicTacToeTree, MNKGame544Tree, MNKGame554Tree
 from play import play
 
 
@@ -38,8 +38,13 @@ def play_mcts():
 
 
 def play_mcts_mnk544():
-    policy = policies.MCTSDefaultPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
+    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
     play(policy, MNKGame544Tree.X_MOVE, game=MNKGame544Tree, verbose=True)
+
+
+def play_mcts_mnk554():
+    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
+    play(policy, MNKGame544Tree.O_MOVE, game=MNKGame554Tree, verbose=True)
 
 
 def dpi_and_play():
@@ -68,5 +73,4 @@ def puct_and_play_only_pi():
 
 
 if __name__ == '__main__':
-    # puct_and_play()
-    puct_and_play_only_pi()
+    play_mcts_mnk554()

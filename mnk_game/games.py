@@ -144,34 +144,35 @@ class MNKGame(Context):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:shift + cls.LINE]) == cls.LINE:
-                    return 1
+                    return 1, (row, column, 'horizontal')
         # vertical
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:cls.LINE * cls.WIDTH + shift:cls.WIDTH]) == cls.LINE:
-                    return 1
+                    return 1, (row, column, 'vertical')
         # main diagonal
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[cls.LINE - 1 + shift:cls.LINE - 1 + shift + cls.LINE * (cls.WIDTH - 1):cls.WIDTH - 1]) == cls.LINE:
-                    return 1
+                    return 1, (row, column, 'main diagonal')
         # anti-diagonal
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:shift + cls.LINE * (cls.WIDTH + 1):cls.WIDTH + 1]) == cls.LINE:
-                    return 1
-        return 0
+                    return 1, (row, column, 'anti-diagonal')
+        return 0, None
 
     def analyze(self):
         board_x, board_o = self.board
         x_count = sum(board_x)
         o_count = sum(board_o)
 
-        reward_x = self.calculate_reward(board_x)
-        reward_o = -self.calculate_reward(board_o)
+        reward_x, _ = self.calculate_reward(board_x)
+        reward_o, _ = self.calculate_reward(board_o)
+        reward_o = -reward_o
 
         if x_count == o_count and reward_x == 0:
             move = MNKGame.X_MOVE
@@ -215,6 +216,27 @@ class MNKGame(Context):
         board_x, board_o = self.board
         cells = [cell(x, o, pos) for pos, (x, o) in enumerate(zip(board_x, board_o))]
 
+        def add_win_line(cells, board):
+            _, (row, column, line) = self.calculate_reward(board)
+            if self.reward == 1:
+                cell = Fore.LIGHTMAGENTA_EX + f' X ' + Style.RESET_ALL
+            else:
+                cell = Fore.LIGHTCYAN_EX + f' O ' + Style.RESET_ALL
+            for offset in range(self.LINE):
+                if line == 'horizontal':
+                    cells[row * self.WIDTH + column + offset] = cell
+                elif line == 'vertical':
+                    cells[(row + offset) * self.WIDTH + column] = cell
+                elif line == 'main diagonal':
+                    cells[row * self.WIDTH + column + self.LINE - 1 + offset * (self.WIDTH - 1)] = cell
+                elif line == 'anti-diagonal':
+                    cells[row * self.WIDTH + column + offset * (self.WIDTH + 1)] = cell
+
+        if self.reward == 1:
+            add_win_line(cells, board_x)
+        elif self.reward == -1:
+            add_win_line(cells, board_o)
+
         border_line = '+'.join(['---'] * self.WIDTH)
         print(f'+{border_line}+')
         for row in range(0, len(cells), self.WIDTH):
@@ -237,11 +259,21 @@ class MNKGame(Context):
 
 
 class MNKGame544(MNKGame):
-
     WIDTH = 5
     HEIGHT = 4
     LINE = 4
 
 
+class MNKGame554(MNKGame):
+    WIDTH = 5
+    HEIGHT = 5
+    LINE = 4
+
+
 class MNKGame544Tree(ContextTree, MNKGame544):
     pass
+
+
+class MNKGame554Tree(ContextTree, MNKGame554):
+    pass
+
