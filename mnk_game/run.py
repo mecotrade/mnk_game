@@ -11,7 +11,7 @@ def play_random():
 
 def fit_q_and_play():
     policy = policies.EpsilonGreedyTabularQPolicy(epsilon=0.2)
-    train.fit_q(policy, game=TicTacToe, selfplay_count=10000)
+    train.fit_q(policy, game=TicTacToe, selfplay_count=25000)
     policy.epsilon = 0.
     play(policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
 
@@ -33,13 +33,13 @@ def q_policy_iteration_and_play():
 
 
 def play_mcts():
-    policy = policies.MCTSPolicy(rollout_count=100, c=2, temperature=0.1, use_visits=False)
+    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
     play(policy, TicTacToeTree.X_MOVE, game=TicTacToeTree, verbose=True)
 
 
 def play_mcts_mnk544():
-    policy = policies.MCTSPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
-    play(policy, MNKGame544Tree.O_MOVE, game=MNKGame544Tree, verbose=True)
+    policy = policies.MCTSDefaultPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
+    play(policy, MNKGame544Tree.X_MOVE, game=MNKGame544Tree, verbose=True)
 
 
 def dpi_and_play():
@@ -52,19 +52,21 @@ def dpi_and_play():
 
 
 def puct_and_play():
-    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.2, use_visits=True)
-    history = train.puct(policy, TicTacToeTree, selfplay_count=1500, batch_size=25, learning_rate=0.1)
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
     print(history)
+    policy.temperature = 0.1
     play(policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
 
 
 def puct_and_play_only_pi():
-    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.2, use_visits=True)
-    history = train.puct(policy, TicTacToeTree, selfplay_count=1500, batch_size=25, learning_rate=0.1)
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
+    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
     print(history)
     play_policy = policies.GreedyTabularPiPolicy(pi_function=policy.pi_function)
     play(play_policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
 
 
 if __name__ == '__main__':
+    # puct_and_play()
     puct_and_play_only_pi()

@@ -43,9 +43,9 @@ def policy_iteration(policy: policies.TabularVPolicy | policies.TabularUCTPolicy
         loss = 0
         for board, rewards in batch_dataset.items():
             state_value = policy.v_function.setdefault(board, 0.)
-            policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
             loss += sum((reward - state_value) ** 2 for reward in rewards)
             count += len(rewards)
+            policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
         mean_loss = loss / count
         history.setdefault('loss', list()).append(mean_loss)
         progress.set_postfix(loss=mean_loss)
@@ -71,10 +71,10 @@ def q_policy_iteration(policy: policies.TabularQPolicy, game: Type[Context], sel
         loss = 0
         for (board, action), rewards in batch_dataset.items():
             action_rewards = policy.q_function.setdefault(board, [0.] * game.num_actions())
-            action_rewards[action] += learning_rate * (sum(rewards) / len(rewards) - action_rewards[action])
-            policy.q_function[board] = action_rewards
             loss += sum((reward - action_rewards[action]) ** 2 for reward in rewards)
             count += len(rewards)
+            action_rewards[action] += learning_rate * (sum(rewards) / len(rewards) - action_rewards[action])
+            policy.q_function[board] = action_rewards
         mean_loss = loss / count
         history.setdefault('loss', list()).append(mean_loss)
         progress.set_postfix(loss=mean_loss)
@@ -99,6 +99,8 @@ def direct_policy_iteration(policy: policies.MCTSDefaultPolicy, game: Type[Conte
         loss = 0
         for board, actions in batch_dataset.items():
             pi, scores = policy.default_policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game))
+            loss += -sum(math.log(pi[action]) for action in actions)
+            count += len(actions)
             scores = [score - learning_rate * p for score, p in zip(scores, pi)]
             for action in actions:
                 scores[action] += learning_rate / len(actions)
@@ -107,8 +109,6 @@ def direct_policy_iteration(policy: policies.MCTSDefaultPolicy, game: Type[Conte
             stat_sum = sum(weights)
             pi = [weight / stat_sum for weight in weights]
             policy.default_policy.pi_function[board] = pi, scores
-            loss += -sum(math.log(pi[action]) for action in actions)
-            count += len(actions)
         mean_loss = loss / count
         history.setdefault('loss', list()).append(mean_loss)
         progress.set_postfix(loss=mean_loss)
@@ -136,13 +136,15 @@ def puct(policy: policies.TabularPUCTPolicy, game: Type[Context], selfplay_count
         v_loss = 0
         for board, rewards in batch_v_dataset.items():
             state_value = policy.v_function.setdefault(board, 0.)
-            policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
             v_loss += sum((reward - state_value) ** 2 for reward in rewards)
             v_count += len(rewards)
+            policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
         pi_count = 0
         pi_loss = 0
         for board, actions in batch_pi_dataset.items():
             pi, scores = policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game))
+            pi_loss += -sum(math.log(pi[action]) for action in actions)
+            pi_count += len(actions)
             scores = [score - learning_rate * p for score, p in zip(scores, pi)]
             for action in actions:
                 scores[action] += learning_rate / len(actions)
@@ -151,11 +153,11 @@ def puct(policy: policies.TabularPUCTPolicy, game: Type[Context], selfplay_count
             stat_sum = sum(weights)
             pi = [weight / stat_sum for weight in weights]
             policy.pi_function[board] = pi, scores
-            pi_loss += -sum(math.log(pi[action]) for action in actions)
-            pi_count += len(actions)
         mean_v_loss = v_loss / v_count
         mean_pi_loss = pi_loss / pi_count
+        pi_size = len(policy.pi_function)
         history.setdefault('v_loss', list()).append(mean_v_loss)
         history.setdefault('pi_loss', list()).append(mean_pi_loss)
-        progress.set_postfix(v_loss=mean_v_loss, pi_loss=mean_pi_loss)
+        history.setdefault('pi_size', list()).append(pi_size)
+        progress.set_postfix(v_loss=mean_v_loss, pi_loss=mean_pi_loss, pi_size=pi_size)
     return history
