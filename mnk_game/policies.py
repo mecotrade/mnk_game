@@ -1,5 +1,6 @@
 import random
 import math
+from typing import Type
 
 from contexts import Context, ContextTree
 
@@ -63,9 +64,14 @@ class TabularPiPolicy(ScorePolicy):
         pi_scores = self.pi_function.get(context.board)
         if pi_scores is not None:
             _, scores = pi_scores
-            return [scores[action] for action in context.actions]
+            return [scores[action] * context.move for action in context.actions]
         else:
             return [0.] * len(context.actions)
+
+    @staticmethod
+    def uniform(context: Context | Type[Context]):
+        n = context.num_actions()
+        return [1/n] * n, [0.] * n
 
 
 class GreedyPolicy(ScorePolicy):
@@ -135,8 +141,8 @@ class GreedyTabularVPolicy(GreedyPolicy, TabularVPolicy):
 
 class GreedyTabularPiPolicy(GreedyPolicy, TabularPiPolicy):
 
-    def __init__(self, pi_policy=None):
-        TabularPiPolicy.__init__(self, pi_policy)
+    def __init__(self, pi_function=None):
+        TabularPiPolicy.__init__(self, pi_function)
 
 
 class EpsilonGreedyTabularQPolicy(EpsilonGreedyPolicy, TabularQPolicy):
@@ -169,18 +175,14 @@ class BoltzmannTabularPiPolicy(BoltzmannPolicy, TabularPiPolicy):
 
 class MCTSPolicy(Policy):
 
-    def __init__(self, rollout_count, c, temperature, use_visits=False, default_policy=None):
+    def __init__(self, rollout_count, c, temperature, use_visits=False):
         self.rollout_count = rollout_count
         self.c = c
         self.temperature = temperature
         self.use_visits = use_visits
-        self.default_policy = default_policy or RandomPolicy()
 
     def expand(self, context: ContextTree):
-        while not context.done:
-            action, _ = self.default_policy(context)
-            context = context.of(action)
-        return context.reward
+        raise NotImplementedError
 
     def select(self, context: ContextTree):
         while True:
@@ -247,3 +249,65 @@ class MCTSPolicy(Policy):
             'visits': {action: visits for action, visits in zip(actions, action_visits)},
             'probability': {action: proba for action, proba in zip(actions, action_proba)}
         }
+
+
+class MCTSDefaultPolicy(MCTSPolicy):
+
+    def __init__(self, rollout_count, c, temperature, use_visits=False, default_policy=None):
+        super().__init__(rollout_count, c, temperature, use_visits)
+        self.default_policy = default_policy or RandomPolicy()
+
+    def expand(self, context: ContextTree):
+        while not context.done:
+            action, _ = self.default_policy(context)
+            context = context.of(action)
+        return context.reward
+
+
+class TabularUCTPolicy(MCTSPolicy):
+
+    def __init__(self, rollout_num, c, temperature, use_visits=False, v_function=None):
+        MCTSPolicy.__init__(self, rollout_num, c, temperature, use_visits)
+        self.v_function = v_function or dict()
+
+    def expand(self, context):
+        return context.reward if context.done else self.v_function.get(context.board, 0.)
+
+
+class TabularPUCTPolicy(TabularUCTPolicy):
+
+    def __init__(self, rollout_count, c, temperature, use_visits=False, v_function=None, pi_function=None):
+        TabularUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, v_function)
+        self.pi_function = pi_function or dict()
+
+    def select(self, context: ContextTree):
+        while True:
+            context.visits += 1
+            if context.done:
+                return context.history, context.reward
+            best_bound = None
+            best_actions = None
+            pi, _ = self.pi_function.get(context.board, TabularPiPolicy.uniform(context))
+            norm = sum(pi[action] for action in context.actions)
+            for action in context.actions:
+                child = context(action)
+                child_bound = child.value + self.c * context.move * (pi[action] / norm) * math.sqrt(context.visits) / (child.visits + 1)
+                if best_bound is None or child_bound * context.move > best_bound * context.move:
+                    best_bound = child_bound
+                    best_actions = [action]
+                elif child_bound == best_bound:
+                    best_actions.append(action)
+            selected_action = random.choice(best_actions)
+            context = context(selected_action)
+            if context.visits == 0:
+                context.visits += 1
+                return context.history, self.expand(context)
+
+    def __call__(self, context):
+        action, info = super().__call__(context)
+        pi, scores = self.pi_function.get(context.board, TabularPiPolicy.uniform(context))
+        info['policy'] = 'puct'
+        info['pi'] = {action: pi[action] for action in context.actions}
+        info['scores'] = {action: scores[action] for action in context.actions}
+        return action, info
+
