@@ -54,6 +54,20 @@ class TabularVPolicy(ScorePolicy):
         return values
 
 
+class TabularPiPolicy(ScorePolicy):
+
+    def __init__(self, pi_function=None):
+        self.pi_function = pi_function or dict()
+
+    def scores(self, context: Context):
+        pi_scores = self.pi_function.get(context.board)
+        if pi_scores is not None:
+            _, scores = pi_scores
+            return [scores[action] for action in context.actions]
+        else:
+            return [0.] * len(context.actions)
+
+
 class GreedyPolicy(ScorePolicy):
 
     def __call__(self, context: Context):
@@ -85,7 +99,7 @@ class EpsilonGreedyPolicy(GreedyPolicy):
 
 
 class BoltzmannPolicy(ScorePolicy):
-    def __init__(self, temperature):
+    def __init__(self, temperature=1.):
         self.temperature = temperature
 
     def __call__(self, context: Context):
@@ -119,6 +133,12 @@ class GreedyTabularVPolicy(GreedyPolicy, TabularVPolicy):
         TabularVPolicy.__init__(self, v_function)
 
 
+class GreedyTabularPiPolicy(GreedyPolicy, TabularPiPolicy):
+
+    def __init__(self, pi_policy=None):
+        TabularPiPolicy.__init__(self, pi_policy)
+
+
 class EpsilonGreedyTabularQPolicy(EpsilonGreedyPolicy, TabularQPolicy):
 
     def __init__(self, epsilon, q_function=None):
@@ -128,29 +148,37 @@ class EpsilonGreedyTabularQPolicy(EpsilonGreedyPolicy, TabularQPolicy):
 
 class BoltzmannTabularVPolicy(BoltzmannPolicy, TabularVPolicy):
 
-    def __init__(self, temperature, v_function=None):
+    def __init__(self, temperature=1., v_function=None):
         BoltzmannPolicy.__init__(self, temperature)
         TabularVPolicy.__init__(self, v_function)
 
 
 class BoltzmannTabularQPolicy(BoltzmannPolicy, TabularQPolicy):
 
-    def __init__(self, temperature, q_function=None):
+    def __init__(self, temperature=1., q_function=None):
         BoltzmannPolicy.__init__(self, temperature)
         TabularQPolicy.__init__(self, q_function)
 
 
+class BoltzmannTabularPiPolicy(BoltzmannPolicy, TabularPiPolicy):
+
+    def __init__(self, temperature=1., pi_function=None):
+        BoltzmannPolicy.__init__(self, temperature)
+        TabularPiPolicy.__init__(self, pi_function)
+
+
 class MCTSPolicy(Policy):
 
-    def __init__(self, rollout_count, c, temperature, use_visits=False):
+    def __init__(self, rollout_count, c, temperature, use_visits=False, default_policy=None):
         self.rollout_count = rollout_count
         self.c = c
         self.temperature = temperature
         self.use_visits = use_visits
+        self.default_policy = default_policy or RandomPolicy()
 
     def expand(self, context: ContextTree):
         while not context.done:
-            action = random.choice(context.actions)
+            action, _ = self.default_policy(context)
             context = context.of(action)
         return context.reward
 

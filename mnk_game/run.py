@@ -40,5 +40,13 @@ def play_mcts_mnk544():
     play(policy, MNKGame544Tree.O_MOVE, game=MNKGame544Tree, verbose=True)
 
 
+def dpi_and_play():
+    pi_policy = policies.BoltzmannTabularPiPolicy()
+    mcts_policy = policies.MCTSPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=True, default_policy=pi_policy)
+    train.direct_policy_iteration(mcts_policy, game=TicTacToeTree, selfplay_count=7500, batch_size=25, learning_rate=0.1)
+    play_policy = mcts_policy.default_policy
+    play(play_policy, TicTacToeTree.X_MOVE, game=TicTacToeTree, verbose=True)
+
+
 if __name__ == '__main__':
-    play_mcts_mnk544()
+    dpi_and_play()
