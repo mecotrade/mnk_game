@@ -11,34 +11,62 @@ def play_random():
 
 def fit_q_and_play():
     policy = policies.EpsilonGreedyTabularQPolicy(epsilon=0.2)
-    train.fit_q(policy, game=TicTacToe, selfplay_count=10000)
+    train.fit_q(policy, game=TicTacToe, selfplay_count=25000)
     policy.epsilon = 0.
     play(policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
 
 
 def policy_iteration_and_play():
     policy = policies.BoltzmannTabularVPolicy(temperature=0.2)
-    train.policy_iteration(policy, game=TicTacToe, selfplay_count=50000, batch_size=50, learning_rate=0.01)
+    history = train.policy_iteration(policy, game=TicTacToe, selfplay_count=100000, batch_size=25, learning_rate=0.1)
+    print(history)
     policy.temperature = 0.1
     play(policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
 
 
 def q_policy_iteration_and_play():
     policy = policies.BoltzmannTabularQPolicy(temperature=0.2)
-    train.q_policy_iteration(policy, game=TicTacToe, selfplay_count=50000, batch_size=50, learning_rate=0.01)
+    history = train.q_policy_iteration(policy, game=TicTacToe, selfplay_count=100000, batch_size=25, learning_rate=0.1)
+    print(history)
     play_policy = policies.GreedyTabularQPolicy(policy.q_function)
     play(play_policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
 
 
 def play_mcts():
-    policy = policies.MCTSPolicy(rollout_count=100, c=2, temperature=0.1, use_visits=False)
+    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
     play(policy, TicTacToeTree.X_MOVE, game=TicTacToeTree, verbose=True)
 
 
 def play_mcts_mnk544():
-    policy = policies.MCTSPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
-    play(policy, MNKGame544Tree.O_MOVE, game=MNKGame544Tree, verbose=True)
+    policy = policies.MCTSDefaultPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
+    play(policy, MNKGame544Tree.X_MOVE, game=MNKGame544Tree, verbose=True)
+
+
+def dpi_and_play():
+    default_policy = policies.BoltzmannTabularPiPolicy()
+    mcts_policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=True, default_policy=default_policy)
+    history = train.direct_policy_iteration(mcts_policy, game=TicTacToeTree, selfplay_count=10000, batch_size=25, learning_rate=0.1)
+    print(history)
+    play_policy = mcts_policy.default_policy
+    play(play_policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+
+
+def puct_and_play():
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+    print(history)
+    policy.temperature = 0.1
+    play(policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+
+
+def puct_and_play_only_pi():
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
+    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+    print(history)
+    play_policy = policies.GreedyTabularPiPolicy(pi_function=policy.pi_function)
+    play(play_policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
 
 
 if __name__ == '__main__':
-    play_mcts_mnk544()
+    # puct_and_play()
+    puct_and_play_only_pi()
