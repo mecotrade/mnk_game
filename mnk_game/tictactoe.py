@@ -85,7 +85,7 @@ class TicTacToe(Context):
     def print_board(cells):
         border_line = '+'.join(['---'] * 3)
         print(f'+{border_line}+')
-        for row in range(0, TicTacToe.NUM_ACTIONS, 3):
+        for row in range(0, 9, 3):
             table_row = '|'.join(cells[row:row + 3])
             print(f'|{table_row}|')
             print(f'+{border_line}+')
@@ -204,7 +204,7 @@ class TicTacToe3D(TicTacToe):
     def print_board(cells):
         border_line = '+'.join(['---'] * 3)
         print(f'+{border_line}+      +{border_line}+      +{border_line}+')
-        for row in range(0, TicTacToe.NUM_ACTIONS, 3):
+        for row in range(0, 9, 3):
             board1_row = '|'.join(cells[row:row + 3])
             board2_row = '|'.join(cells[9 + row:9 + row + 3])
             board3_row = '|'.join(cells[18 + row:18 + row + 3])
