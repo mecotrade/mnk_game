@@ -1,6 +1,7 @@
 import policies
 import train
-from games import TicTacToe, TicTacToeTree, MNKGame544Tree, MNKGame554Tree
+from tictactoe import TicTacToe, TicTacToeTree, TicTacToe3DTree
+from mnk import MNKGame544Tree, MNKGame554Tree, MNKGame333Tree
 from play import play
 
 
@@ -47,6 +48,11 @@ def play_mcts_mnk554():
     play(policy, MNKGame544Tree.O_MOVE, game=MNKGame554Tree, verbose=True)
 
 
+def play_mcts_tictactoe_3d():
+    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
+    play(policy, TicTacToe3DTree.X_MOVE, game=TicTacToe3DTree, verbose=False)
+
+
 def dpi_and_play():
     default_policy = policies.BoltzmannTabularPiPolicy()
     mcts_policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=True, default_policy=default_policy)
@@ -64,6 +70,15 @@ def puct_and_play():
     play(policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
 
 
+def puct_and_play333():
+
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    history = train.puct(policy, MNKGame333Tree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+    print(history)
+    policy.temperature = 0.1
+    play(policy, MNKGame333Tree.O_MOVE, game=MNKGame333Tree, verbose=True)
+
+
 def puct_and_play_only_pi():
     policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
     history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
@@ -73,4 +88,4 @@ def puct_and_play_only_pi():
 
 
 if __name__ == '__main__':
-    play_mcts_mnk554()
+    play_mcts_tictactoe_3d()
