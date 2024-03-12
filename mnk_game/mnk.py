@@ -86,6 +86,18 @@ class MNKGame(Context):
             new_board_o[action] = 1
             return board_x, tuple(new_board_o)
 
+    def add_win_line(self, cells, board, cell):
+        _, (shift, line) = self.calculate_reward(board)
+        for offset in range(self.LINE):
+            if line == 'horizontal':
+                cells[shift + offset] = cell
+            elif line == 'vertical':
+                cells[shift + offset * self.WIDTH] = cell
+            elif line == 'diagonal':
+                cells[shift + self.LINE - 1 + offset * (self.WIDTH - 1)] = cell
+            elif line == 'anti-diagonal':
+                cells[shift + offset * (self.WIDTH + 1)] = cell
+
     def render(self):
 
         def cell(x, o, pos):
@@ -99,22 +111,10 @@ class MNKGame(Context):
         board_x, board_o = self.board
         cells = [cell(x, o, pos) for pos, (x, o) in enumerate(zip(board_x, board_o))]
 
-        def add_win_line(cells, board, cell):
-            _, (shift, line) = self.calculate_reward(board)
-            for offset in range(self.LINE):
-                if line == 'horizontal':
-                    cells[shift + offset] = cell
-                elif line == 'vertical':
-                    cells[shift + offset * self.WIDTH] = cell
-                elif line == 'diagonal':
-                    cells[shift + self.LINE - 1 + offset * (self.WIDTH - 1)] = cell
-                elif line == 'anti-diagonal':
-                    cells[shift + offset * (self.WIDTH + 1)] = cell
-
         if self.reward == 1:
-            add_win_line(cells, board_x, Fore.LIGHTRED_EX + ' # ' + Style.RESET_ALL)
+            self.add_win_line(cells, board_x, Fore.LIGHTRED_EX + ' # ' + Style.RESET_ALL)
         elif self.reward == -1:
-            add_win_line(cells, board_o, Fore.LIGHTCYAN_EX + ' @ ' + Style.RESET_ALL)
+            self.add_win_line(cells, board_o, Fore.LIGHTCYAN_EX + ' @ ' + Style.RESET_ALL)
 
         border_line = '+'.join(['---'] * self.WIDTH)
         print(f'+{border_line}+')
