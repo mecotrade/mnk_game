@@ -31,9 +31,9 @@ class TicTacToe(Context):
     def calculate_reward(cls, board):
         for position in cls.WIN_POSITIONS:
             if board & position == position:
-                return 1
+                return 1, position
         else:
-            return 0
+            return 0, None
 
     @classmethod
     def to_bits(cls, state):
@@ -45,8 +45,9 @@ class TicTacToe(Context):
 
     def analyze(self):
         board_x, board_o = self.board
-        reward_x = self.calculate_reward(board_x)
-        reward_o = -self.calculate_reward(board_o)
+        reward_x, _ = self.calculate_reward(board_x)
+        reward_o, _ = self.calculate_reward(board_o)
+        reward_o = -reward_o
 
         bits_x = self.to_bits(board_x)
         bits_o = self.to_bits(board_o)
@@ -89,6 +90,13 @@ class TicTacToe(Context):
             print(f'|{table_row}|')
             print(f'+{border_line}+')
 
+    def add_win_line(self, cells, board, cell):
+        _, position = self.calculate_reward(board)
+        bits = self.to_bits(position)
+        for pos, bit in enumerate(bits):
+            if bit == 1:
+                cells[pos] = cell
+
     def render(self):
 
         def cell(x, o, pos):
@@ -103,6 +111,11 @@ class TicTacToe(Context):
         bits_x = self.to_bits(board_x)
         bits_o = self.to_bits(board_o)
         cells = [cell(bits_x, bits_o, pos) for pos, (bits_x, bits_o) in enumerate(zip(bits_x, bits_o))]
+
+        if self.reward == 1:
+            self.add_win_line(cells, board_x, Fore.LIGHTRED_EX + ' # ' + Style.RESET_ALL)
+        elif self.reward == -1:
+            self.add_win_line(cells, board_o, Fore.LIGHTCYAN_EX + ' @ ' + Style.RESET_ALL)
 
         self.print_board(cells)
 
