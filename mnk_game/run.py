@@ -1,6 +1,6 @@
 import policies
 import train
-from games import TicTacToe, TicTacToeTree, MNKGame544Tree, MNKGame554Tree
+from games import TicTacToe, TicTacToeTree, MNKGame544Tree, MNKGame554Tree, MNKGame333Tree
 from play import play
 
 
@@ -62,6 +62,15 @@ def puct_and_play():
     print(history)
     policy.temperature = 0.1
     play(policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+
+
+def puct_and_play333():
+
+    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    history = train.puct(policy, MNKGame333Tree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+    print(history)
+    policy.temperature = 0.1
+    play(policy, MNKGame333Tree.O_MOVE, game=MNKGame333Tree, verbose=True)
 
 
 def puct_and_play_only_pi():

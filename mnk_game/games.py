@@ -131,7 +131,7 @@ class MNKGame(Context):
 
     @classmethod
     def new(cls):
-        return cls(([0] * cls.num_actions(), [0] * cls.num_actions()))
+        return cls(((0,) * cls.num_actions(), (0,) * cls.num_actions()))
 
     @classmethod
     def num_actions(cls):
@@ -144,25 +144,25 @@ class MNKGame(Context):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:shift + cls.LINE]) == cls.LINE:
-                    return 1, (row, column, 'horizontal')
+                    return 1, (shift, 'horizontal')
         # vertical
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:cls.LINE * cls.WIDTH + shift:cls.WIDTH]) == cls.LINE:
-                    return 1, (row, column, 'vertical')
+                    return 1, (shift, 'vertical')
         # main diagonal
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[cls.LINE - 1 + shift:cls.LINE - 1 + shift + cls.LINE * (cls.WIDTH - 1):cls.WIDTH - 1]) == cls.LINE:
-                    return 1, (row, column, 'main diagonal')
+                    return 1, (shift, 'diagonal')
         # anti-diagonal
         for row in range(cls.HEIGHT - cls.LINE + 1):
             for column in range(cls.WIDTH - cls.LINE + 1):
                 shift = row * cls.WIDTH + column
                 if sum(board[shift:shift + cls.LINE * (cls.WIDTH + 1):cls.WIDTH + 1]) == cls.LINE:
-                    return 1, (row, column, 'anti-diagonal')
+                    return 1, (shift, 'anti-diagonal')
         return 0, None
 
     def analyze(self):
@@ -181,8 +181,7 @@ class MNKGame(Context):
             move = MNKGame.O_MOVE
             reward = reward_x
         else:
-            move = None
-            reward = 0
+            raise ValueError(self.board)
 
         actions = list()
         for pos, (x, o) in enumerate(zip(board_x, board_o)):
@@ -195,13 +194,14 @@ class MNKGame(Context):
 
     def apply(self, action):
         board_x, board_o = self.board
-        board_x = board_x.copy()
-        board_o = board_o.copy()
         if self.move == MNKGame.X_MOVE:
-            board_x[action] = 1
+            new_board_x = list(board_x)
+            new_board_x[action] = 1
+            return tuple(new_board_x), board_o
         else:
-            board_o[action] = 1
-        return board_x, board_o
+            new_board_o = list(board_o)
+            new_board_o[action] = 1
+            return board_x, tuple(new_board_o)
 
     def render(self):
 
@@ -209,33 +209,29 @@ class MNKGame(Context):
             if x == 1:
                 return Fore.RED + ' X ' + Style.RESET_ALL
             elif o == 1:
-                return Fore.BLUE + ' O ' + Style.RESET_ALL
+                return Fore.CYAN + ' O ' + Style.RESET_ALL
             else:
-                return Fore.YELLOW + f'{pos+1:^3}' + Style.RESET_ALL
+                return Fore.LIGHTBLACK_EX + f'{pos+1:^3}' + Style.RESET_ALL
 
         board_x, board_o = self.board
         cells = [cell(x, o, pos) for pos, (x, o) in enumerate(zip(board_x, board_o))]
 
-        def add_win_line(cells, board):
-            _, (row, column, line) = self.calculate_reward(board)
-            if self.reward == 1:
-                cell = Fore.LIGHTMAGENTA_EX + f' X ' + Style.RESET_ALL
-            else:
-                cell = Fore.LIGHTCYAN_EX + f' O ' + Style.RESET_ALL
+        def add_win_line(cells, board, cell):
+            _, (shift, line) = self.calculate_reward(board)
             for offset in range(self.LINE):
                 if line == 'horizontal':
-                    cells[row * self.WIDTH + column + offset] = cell
+                    cells[shift + offset] = cell
                 elif line == 'vertical':
-                    cells[(row + offset) * self.WIDTH + column] = cell
-                elif line == 'main diagonal':
-                    cells[row * self.WIDTH + column + self.LINE - 1 + offset * (self.WIDTH - 1)] = cell
+                    cells[shift + offset * self.WIDTH] = cell
+                elif line == 'diagonal':
+                    cells[shift + self.LINE - 1 + offset * (self.WIDTH - 1)] = cell
                 elif line == 'anti-diagonal':
-                    cells[row * self.WIDTH + column + offset * (self.WIDTH + 1)] = cell
+                    cells[shift + offset * (self.WIDTH + 1)] = cell
 
         if self.reward == 1:
-            add_win_line(cells, board_x)
+            add_win_line(cells, board_x, Fore.LIGHTRED_EX + ' # ' + Style.RESET_ALL)
         elif self.reward == -1:
-            add_win_line(cells, board_o)
+            add_win_line(cells, board_o, Fore.LIGHTCYAN_EX + ' @ ' + Style.RESET_ALL)
 
         border_line = '+'.join(['---'] * self.WIDTH)
         print(f'+{border_line}+')
@@ -258,10 +254,24 @@ class MNKGame(Context):
                 print('Draw')
 
 
+class MNKGame333(MNKGame):
+    WIDTH = 3
+    HEIGHT = 3
+    LINE = 3
+
+
+class MNKGame333Tree(MNKGame333, ContextTree):
+    pass
+
+
 class MNKGame544(MNKGame):
     WIDTH = 5
     HEIGHT = 4
     LINE = 4
+
+
+class MNKGame544Tree(ContextTree, MNKGame544):
+    pass
 
 
 class MNKGame554(MNKGame):
@@ -270,10 +280,5 @@ class MNKGame554(MNKGame):
     LINE = 4
 
 
-class MNKGame544Tree(ContextTree, MNKGame544):
-    pass
-
-
 class MNKGame554Tree(ContextTree, MNKGame554):
     pass
-
