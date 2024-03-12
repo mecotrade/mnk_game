@@ -3,12 +3,13 @@ from typing import Type
 from contexts import Context, ContextTree
 
 
-def print_info(info):
+def print_info(info, actions):
     for key, value in info.items():
         if isinstance(value, dict):
             print(f'{key}:')
-            for k, v in sorted(value.items(), key=lambda entry: entry[1], reverse=True):
-                print(f'\t{k+1}: {v}')
+            for action, score in sorted(value.items(), key=lambda entry: entry[1], reverse=True):
+                if action in actions:
+                    print(f'\t{action + 1}: {score}')
         else:
             print(f'{key}: {value}')
 
@@ -28,7 +29,7 @@ def play(policy, side, game: Type[Context], verbose=False):
             if context.move == side:
                 action, info = policy(context)
                 if verbose:
-                    print_info(info)
+                    print_info(info, context.actions)
                 print(f'Made action {action+1}')
             else:
                 action = None
@@ -42,7 +43,7 @@ def play(policy, side, game: Type[Context], verbose=False):
                                 if child is not None:
                                     values[hint_action] = child.value
                                     visits[hint_action] = child.visits
-                            print_info({'values': values, 'visits': visits})
+                            print_info({'values': values, 'visits': visits}, context.actions)
                             continue
                     else:
                         human_input = input(f'Choose your move, or "q" for quit: ')
