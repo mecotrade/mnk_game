@@ -49,7 +49,7 @@ def play_mcts_mnk554():
 
 
 def play_mcts_tictactoe_3d():
-    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
+    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
     play(policy, TicTacToe3DTree.X_MOVE, game=TicTacToe3DTree, verbose=False)
 
 
