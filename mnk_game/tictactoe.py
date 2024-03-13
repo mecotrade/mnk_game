@@ -64,11 +64,8 @@ class TicTacToe(Context):
 
         board_free = self.to_bits(~(board_x | board_o))
 
-        done = reward != 0 or sum(board_free) == 0
-        actions = list()
-        for idx, pos in enumerate(board_free):
-            if pos == 1:
-                actions.append(idx)
+        actions = [idx for idx, pos in enumerate(board_free) if pos == 1]
+        done = reward != 0 or len(actions) == 0
 
         return reward, done, move, actions
 
@@ -234,6 +231,24 @@ class UltimateTicTacToe(TicTacToe):
     def num_actions(cls):
         return cls.NUM_ACTIONS * cls.NUM_SUB_BOARDS
 
+    def calculate_actions(self):
+        if self.history:
+            sub_boards_x, sub_boards_o, super_board_x, super_board_o = self.board
+            target_sub_board_idx = self.history[-1] % self.NUM_SUB_BOARDS
+            super_board_mask = 2 ** target_sub_board_idx
+            if (super_board_x | super_board_o) & super_board_mask == super_board_mask:
+                available_sub_boards = [idx for idx, board
+                                        in enumerate(self.to_bits(~(super_board_x | super_board_o))) if board == 1]
+            else:
+                available_sub_boards = [target_sub_board_idx]
+            actions = list()
+            for sub_board_idx in available_sub_boards:
+                sub_board_free = self.to_bits(~(sub_boards_x[sub_board_idx] | sub_boards_o[sub_board_idx]))
+                actions += [idx + sub_board_idx * self.NUM_ACTIONS for idx, pos in enumerate(sub_board_free) if pos == 1]
+            return actions
+        else:
+            return list(range(self.NUM_ACTIONS * self.NUM_SUB_BOARDS))
+
     def analyze(self):
         sub_boards_x, sub_boards_o, super_board_x, super_board_o = self.board
         x_count = 0
@@ -258,17 +273,8 @@ class UltimateTicTacToe(TicTacToe):
         else:
             raise ValueError(self.board)
 
-        if self.history:
-            last_sub_board = self.history[-1] % self.NUM_SUB_BOARDS
-            board_free = self.to_bits(~(sub_boards_x[last_sub_board] | sub_boards_o[last_sub_board]))
-            done = reward != 0 or sum(board_free) == 0
-            actions = list()
-            for idx, pos in enumerate(board_free):
-                if pos == 1:
-                    actions = actions + [idx + last_sub_board * self.NUM_ACTIONS]
-        else:
-            actions = list(range(self.NUM_ACTIONS * self.NUM_SUB_BOARDS))
-            done = False
+        actions = self.calculate_actions()
+        done = reward != 0 or len(actions) == 0
 
         return reward, done, move, actions
 
@@ -338,4 +344,18 @@ class UltimateTicTacToeTree(UltimateTicTacToe, ContextTree):
     pass
 
 
+class UltimateTicTacToeAlt(UltimateTicTacToe):
 
+    def calculate_actions(self):
+        if self.history:
+            sub_boards_x, sub_boards_o, _, _ = self.board
+            target_sub_board_idx = self.history[-1] % self.NUM_SUB_BOARDS
+            sub_board_free = self.to_bits(~(sub_boards_x[target_sub_board_idx] | sub_boards_o[target_sub_board_idx]))
+            actions = [idx + target_sub_board_idx * self.NUM_ACTIONS for idx, pos in enumerate(sub_board_free) if pos == 1]
+            return actions
+        else:
+            return list(range(self.NUM_ACTIONS * self.NUM_SUB_BOARDS))
+
+
+class UltimateTicTacToeAltTree(UltimateTicTacToeAlt, ContextTree):
+    pass
