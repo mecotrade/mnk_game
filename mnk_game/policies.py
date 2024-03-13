@@ -168,16 +168,19 @@ class BoltzmannTabularPiPolicy(BoltzmannPolicy, TabularPiPolicy):
         TabularPiPolicy.__init__(self, pi_function)
 
 
-class MCTSPolicy(Policy):
+class TreePolicy:
+
+    def expand(self, context: ContextTree):
+        raise NotImplementedError
+
+
+class MCTSPolicy(Policy, TreePolicy):
 
     def __init__(self, rollout_count, c=1, temperature=1, use_visits=False):
         self.rollout_count = rollout_count
         self.c = c
         self.temperature = temperature
         self.use_visits = use_visits
-
-    def expand(self, context: ContextTree):
-        raise NotImplementedError
 
     def select(self, context: ContextTree):
         while True:
@@ -240,33 +243,10 @@ class MCTSPolicy(Policy):
         }
 
 
-class MCTSDefaultPolicy(MCTSPolicy):
+class PUCTPolicy(MCTSPolicy):
 
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, default_policy=None):
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None):
         super().__init__(rollout_count, c, temperature, use_visits)
-        self.default_policy = default_policy or RandomPolicy()
-
-    def expand(self, context: ContextTree):
-        while not context.done:
-            action, _ = self.default_policy(context)
-            context = context.of(action)
-        return context.reward
-
-
-class TabularUCTPolicy(MCTSPolicy):
-
-    def __init__(self, rollout_num, c=1, temperature=1, use_visits=False, v_function=None):
-        MCTSPolicy.__init__(self, rollout_num, c, temperature, use_visits)
-        self.v_function = v_function or dict()
-
-    def expand(self, context):
-        return context.reward if context.done else self.v_function.get(context.board, 0.)
-
-
-class TabularPUCTPolicy(TabularUCTPolicy):
-
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, v_function=None, pi_function=None):
-        TabularUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, v_function)
         self.pi_function = pi_function or dict()
 
     def select(self, context: ContextTree):
@@ -299,3 +279,51 @@ class TabularPUCTPolicy(TabularUCTPolicy):
         info['scores'] = {action: scores[action] for action in context.actions}
         return action, info
 
+
+class DefaultTreePolicy(TreePolicy):
+
+    def __init__(self, default_policy=None):
+        self.default_policy = default_policy or RandomPolicy()
+
+    def expand(self, context: ContextTree):
+        while not context.done:
+            action, _ = self.default_policy(context)
+            context = context.of(action)
+        return context.reward
+
+
+class MCTSDefaultPolicy(MCTSPolicy, DefaultTreePolicy):
+
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, default_policy=None):
+        MCTSPolicy.__init__(self, rollout_count, c, temperature, use_visits)
+        DefaultTreePolicy.__init__(self, default_policy)
+
+
+class PUCTDefaultPolicy(PUCTPolicy, DefaultTreePolicy):
+
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, default_policy=None):
+        PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
+        DefaultTreePolicy.__init__(self, default_policy)
+
+
+class TabularTreePolicy(TreePolicy):
+
+    def __init__(self, v_function=None):
+        self.v_function = v_function or dict()
+
+    def expand(self, context):
+        return context.reward if context.done else self.v_function.get(context.board, 0.)
+
+
+class TabularUCTPolicy(MCTSPolicy, TabularTreePolicy):
+
+    def __init__(self, rollout_num, c=1, temperature=1, use_visits=False, v_function=None):
+        MCTSPolicy.__init__(self, rollout_num, c, temperature, use_visits)
+        TabularTreePolicy.__init__(self, v_function)
+
+
+class TabularPUCTPolicy(PUCTPolicy, TabularTreePolicy):
+
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, v_function=None):
+        PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
+        TabularTreePolicy.__init__(self, v_function)
