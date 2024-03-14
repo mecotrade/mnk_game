@@ -50,10 +50,12 @@ def play(policy, side, game: Type[Context], verbose=False):
                     if human_input == 'q':
                         print('Buy-buy!')
                         return
-                    else:
+                    elif human_input.isdigit():
                         action = int(human_input) - 1
                         if action not in context.actions:
                             print('Wrong move, try again')
+                    else:
+                        print('Wrong input, try again')
             context = context(action)
             context.render()
         if context.reward == 1:
