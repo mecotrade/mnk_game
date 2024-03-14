@@ -1,7 +1,9 @@
 import policies
 import train
-from tictactoe import TicTacToe, TicTacToeTree, TicTacToe3DTree, UltimateTicTacToeTree
-from mnk import MNKGame544Tree, MNKGame554Tree, MNKGame333Tree
+from tictactoe import TicTacToe, TicTacToeTree, MNKGame433Tree, MNKGame444Tree
+from nd_game import TicTacToe3DTree, QubicTree
+from ultimate import UltimateTicTacToeTree, Ultimate433GameTree, Ultimate444GameTree
+from mnk_game import MNKGame544Tree, MNKGame554Tree, MNKGame333Tree
 from play import play
 
 
@@ -38,6 +40,16 @@ def play_mcts():
     play(policy, TicTacToeTree.X_MOVE, game=TicTacToeTree, verbose=False)
 
 
+def play_mcts_mnk433():
+    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    play(policy, MNKGame433Tree.X_MOVE, game=MNKGame433Tree, verbose=False)
+
+
+def play_mcts_mnk444():
+    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
+    play(policy, MNKGame444Tree.X_MOVE, game=MNKGame444Tree, verbose=False)
+
+
 def play_mcts_mnk544():
     policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
     play(policy, MNKGame544Tree.X_MOVE, game=MNKGame544Tree, verbose=False)
@@ -53,9 +65,24 @@ def play_mcts_tictactoe_3d():
     play(policy, TicTacToe3DTree.X_MOVE, game=TicTacToe3DTree, verbose=False)
 
 
+def play_mcts_qubic():
+    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
+    play(policy, QubicTree.X_MOVE, game=QubicTree, verbose=False)
+
+
 def play_mcts_ultimate_tictactoe():
     policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
     play(policy, UltimateTicTacToeTree.O_MOVE, game=UltimateTicTacToeTree, verbose=False)
+
+
+def play_mcts_ultimate_433():
+    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
+    play(policy, Ultimate433GameTree.O_MOVE, game=Ultimate433GameTree, verbose=False)
+
+
+def play_mcts_ultimate_444():
+    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
+    play(policy, Ultimate444GameTree.O_MOVE, game=Ultimate444GameTree, verbose=False)
 
 
 def dpi_and_play():
@@ -93,4 +120,5 @@ def puct_and_play_only_pi():
 
 
 if __name__ == '__main__':
-    play_mcts_ultimate_tictactoe()
+    play_mcts_ultimate_444()
+

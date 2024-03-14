@@ -66,12 +66,8 @@ class MNKGame(Context):
         else:
             raise ValueError(self.board)
 
-        actions = list()
-        for pos, (x, o) in enumerate(zip(board_x, board_o)):
-            if x == 0 and o == 0:
-                actions.append(pos)
-
-        done = reward != 0 or len(actions) == 0
+        actions = [idx for idx, (x, o) in enumerate(zip(board_x, board_o)) if x == 0 and o == 0] if reward == 0 else list()
+        done = len(actions) == 0
 
         return reward, done, move, actions
 
