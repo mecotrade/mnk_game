@@ -71,7 +71,7 @@ def play_mcts_qubic():
 
 
 def play_mcts_ultimate_tictactoe():
-    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
+    policy = policies.MCTSDefaultPolicy(rollout_count=2000, c=1, temperature=0.1, use_visits=True)
     play(policy, UltimateTicTacToeTree.O_MOVE, game=UltimateTicTacToeTree, verbose=False)
 
 
@@ -120,11 +120,5 @@ def puct_and_play_only_pi():
 
 
 if __name__ == '__main__':
-    # play_mcts_ultimate_tictactoe()
-    # play_mcts_mnk433()
-    # play_mcts_qubic()
-    # play_mcts_tictactoe_3d()
-    # play_mcts_ultimate_433()
-    play_mcts_ultimate_444()
-17
+    puct_and_play_only_pi()
 

@@ -18,7 +18,7 @@ def fit_q(policy: policies.TabularQPolicy, game: Type[Context], selfplay_count):
         for board, action in rollout:
             action_visit_counts = visit_counts.setdefault(board, [0] * game.num_actions())
             action_visit_counts[action] += 1
-            action_rewards = policy.q_function.setdefault(board, [0.] * game.num_actions())
+            action_rewards = policy.q_function.get(board, policy.init(game.num_actions()))
             action_rewards[action] += (context.reward - action_rewards[action]) / action_visit_counts[action]
             policy.q_function[board] = action_rewards
 
@@ -42,7 +42,7 @@ def policy_iteration(policy: policies.TabularVPolicy | policies.TabularUCTPolicy
         count = 0
         loss = 0
         for board, rewards in batch_dataset.items():
-            state_value = policy.v_function.setdefault(board, 0.)
+            state_value = policy.v_function.setdefault(board, policy.init())
             loss += sum((reward - state_value) ** 2 for reward in rewards)
             count += len(rewards)
             policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
@@ -70,7 +70,7 @@ def q_policy_iteration(policy: policies.TabularQPolicy, game: Type[Context], sel
         count = 0
         loss = 0
         for (board, action), rewards in batch_dataset.items():
-            action_rewards = policy.q_function.setdefault(board, [0.] * game.num_actions())
+            action_rewards = policy.q_function[board]
             loss += sum((reward - action_rewards[action]) ** 2 for reward in rewards)
             count += len(rewards)
             action_rewards[action] += learning_rate * (sum(rewards) / len(rewards) - action_rewards[action])
@@ -98,7 +98,7 @@ def direct_policy_iteration(policy: policies.MCTSDefaultPolicy, game: Type[Conte
         count = 0
         loss = 0
         for board, actions in batch_dataset.items():
-            pi, scores = policy.default_policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game))
+            pi, scores = policy.default_policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game.num_actions()))
             loss += -sum(math.log(pi[action]) for action in actions)
             count += len(actions)
             scores = [score - learning_rate * p for score, p in zip(scores, pi)]
@@ -128,21 +128,21 @@ def puct(policy: policies.TabularPUCTPolicy, game: Type[Context], selfplay_count
             while not context.done:
                 action, _ = policy(context)
                 batch_pi_dataset.setdefault(context.board, list()).append(action)
-                context = context(action)
                 rollout.append(context.board)
+                context = context(action)
             for board in rollout:
                 batch_v_dataset.setdefault(board, list()).append(context.reward)
         v_count = 0
         v_loss = 0
         for board, rewards in batch_v_dataset.items():
-            state_value = policy.v_function.setdefault(board, 0.)
+            state_value = policy.v_function.setdefault(board, policy.init())
             v_loss += sum((reward - state_value) ** 2 for reward in rewards)
             v_count += len(rewards)
             policy.v_function[board] += learning_rate * (sum(rewards) / len(rewards) - state_value)
         pi_count = 0
         pi_loss = 0
         for board, actions in batch_pi_dataset.items():
-            pi, scores = policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game))
+            pi, scores = policy.pi_function.setdefault(board, policies.TabularPiPolicy.uniform(game.num_actions()))
             pi_loss += -sum(math.log(pi[action]) for action in actions)
             pi_count += len(actions)
             scores = [score - learning_rate * p for score, p in zip(scores, pi)]

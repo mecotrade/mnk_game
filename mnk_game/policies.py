@@ -1,6 +1,5 @@
 import random
 import math
-from typing import Type
 
 from contexts import Context, ContextTree
 
@@ -29,30 +28,34 @@ class ScorePolicy(Policy):
 
 class TabularQPolicy(ScorePolicy):
 
-    def __init__(self, q_function=None):
+    def __init__(self, q_function=None, max_init_q=0.01):
         self.q_function = q_function or dict()
+        self.max_init_q = max_init_q
 
     def scores(self, context: Context):
-        q_values = self.q_function.get(context.board)
-        if q_values is not None:
-            q_values = [q_values[action] * context.move for action in context.actions]
-        else:
-            q_values = [0.] * len(context.actions)
-        return q_values
+        q_values = self.q_function.setdefault(context.board, self.init(context.num_actions()))
+        return [q_values[action] * context.move for action in context.actions]
+
+    def init(self, num_actions):
+        return [(2 * random.random() - 1) * self.max_init_q for _ in range(num_actions)]
 
 
 class TabularVPolicy(ScorePolicy):
 
-    def __init__(self, v_function=None):
+    def __init__(self, v_function=None, max_init_value=0.01):
         self.v_function = v_function or dict()
+        self.max_init_value = max_init_value
 
     def scores(self, context: Context):
         values = list()
         for action in context.actions:
             virtual_board = context.apply(action)
-            value = self.v_function.get(virtual_board, 0.)
+            value = self.v_function.setdefault(virtual_board, self.init())
             values.append(value * context.move)
         return values
+
+    def init(self):
+        return (2 * random.random() - 1) * self.max_init_value
 
 
 class TabularPiPolicy(ScorePolicy):
@@ -61,17 +64,12 @@ class TabularPiPolicy(ScorePolicy):
         self.pi_function = pi_function or dict()
 
     def scores(self, context: Context):
-        pi_scores = self.pi_function.get(context.board)
-        if pi_scores is not None:
-            _, scores = pi_scores
-            return [scores[action] for action in context.actions]
-        else:
-            return [0.] * len(context.actions)
+        _, scores = self.pi_function.setdefault(context.board, self.uniform(context.num_actions()))
+        return [scores[action] for action in context.actions]
 
     @staticmethod
-    def uniform(context: Context | Type[Context]):
-        n = context.num_actions()
-        return [1/n] * n, [0.] * n
+    def uniform(num_actions: int):
+        return [1 / num_actions] * num_actions, [0.] * num_actions
 
 
 class GreedyPolicy(ScorePolicy):
@@ -79,16 +77,13 @@ class GreedyPolicy(ScorePolicy):
     def __call__(self, context: Context):
         scores = self.scores(context)
         max_score = None
-        best_actions = None
+        policy_action = None
         action_scores = dict()
         for action, score in zip(context.actions, scores):
             action_scores[action] = score
             if max_score is None or max_score < score:
                 max_score = score
-                best_actions = [action]
-            elif max_score == score:
-                best_actions.append(action)
-        policy_action = random.choice(best_actions)
+                policy_action = action
         return policy_action, {'policy': 'greedy', 'scores': action_scores}
 
 
@@ -194,16 +189,13 @@ class MCTSPolicy(Policy, TreePolicy):
                 child.visits += 1
                 return child.history, self.expand(child)
             max_bound = None
-            best_actions = None
+            selected_action = None
             for action in context.actions:
                 child = context.children[action]
                 child_bound = (context.move / child.move) * child.value + self.c * math.sqrt(math.log(context.visits) / child.visits)
                 if max_bound is None or child_bound > max_bound:
                     max_bound = child_bound
-                    best_actions = [action]
-                elif child_bound == max_bound:
-                    best_actions.append(action)
-            selected_action = random.choice(best_actions)
+                    selected_action = action
             context = context(selected_action)
 
     @staticmethod
@@ -255,17 +247,14 @@ class PUCTPolicy(MCTSPolicy):
             if context.done:
                 return context.history, context.reward
             max_bound = None
-            best_actions = None
-            pi, _ = self.pi_function.get(context.board, TabularPiPolicy.uniform(context))
+            selected_action = None
+            pi, _ = self.pi_function.setdefault(context.board, TabularPiPolicy.uniform(context.num_actions()))
             for action in context.actions:
                 child = context(action)
                 child_bound = (context.move / child.move) * child.value + self.c * pi[action] * math.sqrt(context.visits) / (child.visits + 1)
                 if max_bound is None or child_bound > max_bound:
                     max_bound = child_bound
-                    best_actions = [action]
-                elif child_bound == max_bound:
-                    best_actions.append(action)
-            selected_action = random.choice(best_actions)
+                    selected_action = action
             context = context(selected_action)
             if context.visits == 0:
                 context.visits += 1
@@ -273,7 +262,7 @@ class PUCTPolicy(MCTSPolicy):
 
     def __call__(self, context):
         action, info = super().__call__(context)
-        pi, scores = self.pi_function.get(context.board, TabularPiPolicy.uniform(context))
+        pi, scores = self.pi_function.get(context.board, TabularPiPolicy.uniform(context.num_actions()))
         info['policy'] = 'puct'
         info['pi'] = {action: pi[action] for action in context.actions}
         info['scores'] = {action: scores[action] for action in context.actions}
@@ -308,11 +297,15 @@ class PUCTDefaultPolicy(PUCTPolicy, DefaultTreePolicy):
 
 class TabularTreePolicy(TreePolicy):
 
-    def __init__(self, v_function=None):
+    def __init__(self, v_function=None, max_init_value=0.01):
         self.v_function = v_function or dict()
+        self.max_init_value = max_init_value
+
+    def init(self):
+        return (2 * random.random() - 1) * self.max_init_value
 
     def expand(self, context):
-        return context.reward if context.done else self.v_function.get(context.board, 0.)
+        return context.reward if context.done else self.v_function.setdefault(context.board, self.init())
 
 
 class TabularUCTPolicy(MCTSPolicy, TabularTreePolicy):
