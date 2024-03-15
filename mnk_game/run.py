@@ -1,124 +1,74 @@
 import policies
 import train
-from tictactoe import TicTacToe, TicTacToeTree, MNKGame433Tree, MNKGame444Tree
-from nd_game import TicTacToe3DTree, QubicTree
-from ultimate import UltimateTicTacToeTree, Ultimate433GameTree, Ultimate444GameTree
-from mnk_game import MNKGame544Tree, MNKGame554Tree, MNKGame333Tree
 from play import play
+import tictactoe
+import mnk_game
+import nd_game
+import ultimate
 
 
-def play_random():
+def play_random(game):
     policy = policies.RandomPolicy()
-    play(policy, TicTacToe.X_MOVE, game=TicTacToe)
+    play(policy, game.X_MOVE, game=game)
 
 
-def fit_q_and_play():
+def fit_q_and_play(game):
     policy = policies.EpsilonGreedyTabularQPolicy(epsilon=0.2)
-    train.fit_q(policy, game=TicTacToe, selfplay_count=25000)
+    train.fit_q(policy, game=game, selfplay_count=500000)
     policy.epsilon = 0.
-    play(policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
+    play(policy, game.O_MOVE, game=game, verbose=True)
 
 
-def policy_iteration_and_play():
+def policy_iteration_and_play(game):
     policy = policies.BoltzmannTabularVPolicy(temperature=0.2)
-    history = train.policy_iteration(policy, game=TicTacToe, selfplay_count=100000, batch_size=25, learning_rate=0.1)
+    history = train.policy_iteration(policy, game=game, selfplay_count=100000, batch_size=25, learning_rate=0.1)
     print(history)
     policy.temperature = 0.1
-    play(policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
+    play(policy, game.X_MOVE, game=game, verbose=True)
 
 
-def q_policy_iteration_and_play():
+def q_policy_iteration_and_play(game):
     policy = policies.BoltzmannTabularQPolicy(temperature=0.2)
-    history = train.q_policy_iteration(policy, game=TicTacToe, selfplay_count=100000, batch_size=25, learning_rate=0.1)
+    history = train.q_policy_iteration(policy, game=game, selfplay_count=100000, batch_size=25, learning_rate=0.1)
     print(history)
     play_policy = policies.GreedyTabularQPolicy(policy.q_function)
-    play(play_policy, TicTacToe.X_MOVE, game=TicTacToe, verbose=True)
+    play(play_policy, game.X_MOVE, game=game, verbose=True)
 
 
-def play_mcts():
-    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
-    play(policy, TicTacToeTree.X_MOVE, game=TicTacToeTree, verbose=False)
+def play_mcts(game):
+    policy = policies.MCTSDefaultPolicy(rollout_count=5000, c=1, temperature=0.1, use_visits=True)
+    play(policy, game.X_MOVE, game=game, verbose=False)
 
 
-def play_mcts_mnk433():
-    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
-    play(policy, MNKGame433Tree.X_MOVE, game=MNKGame433Tree, verbose=False)
-
-
-def play_mcts_mnk444():
-    policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
-    play(policy, MNKGame444Tree.X_MOVE, game=MNKGame444Tree, verbose=False)
-
-
-def play_mcts_mnk544():
-    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
-    play(policy, MNKGame544Tree.X_MOVE, game=MNKGame544Tree, verbose=False)
-
-
-def play_mcts_mnk554():
-    policy = policies.MCTSDefaultPolicy(rollout_count=50000, c=1, temperature=0.1, use_visits=True)
-    play(policy, MNKGame544Tree.X_MOVE, game=MNKGame554Tree, verbose=False)
-
-
-def play_mcts_tictactoe_3d():
-    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
-    play(policy, TicTacToe3DTree.X_MOVE, game=TicTacToe3DTree, verbose=False)
-
-
-def play_mcts_qubic():
-    policy = policies.MCTSDefaultPolicy(rollout_count=10000, c=1, temperature=0.1, use_visits=True)
-    play(policy, QubicTree.X_MOVE, game=QubicTree, verbose=False)
-
-
-def play_mcts_ultimate_tictactoe():
-    policy = policies.MCTSDefaultPolicy(rollout_count=2000, c=1, temperature=0.1, use_visits=True)
-    play(policy, UltimateTicTacToeTree.O_MOVE, game=UltimateTicTacToeTree, verbose=False)
-
-
-def play_mcts_ultimate_433():
-    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
-    play(policy, Ultimate433GameTree.O_MOVE, game=Ultimate433GameTree, verbose=False)
-
-
-def play_mcts_ultimate_444():
-    policy = policies.MCTSDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=True)
-    play(policy, Ultimate444GameTree.O_MOVE, game=Ultimate444GameTree, verbose=False)
-
-
-def dpi_and_play():
+def dpi_and_play(game):
     default_policy = policies.BoltzmannTabularPiPolicy()
     mcts_policy = policies.MCTSDefaultPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=True, default_policy=default_policy)
-    history = train.direct_policy_iteration(mcts_policy, game=TicTacToeTree, selfplay_count=10000, batch_size=25, learning_rate=0.1)
+    history = train.direct_policy_iteration(mcts_policy, game=game, selfplay_count=10000, batch_size=25, learning_rate=0.1)
     print(history)
     play_policy = mcts_policy.default_policy
-    play(play_policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+    play(play_policy, game.O_MOVE, game=game, verbose=True)
 
 
-def puct_and_play():
-    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
-    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+def play_puct_default(game):
+    policy = policies.TabularPUCTDefaultPolicy(rollout_count=1000, c=1, temperature=0.1, use_visits=False)
+    play(policy, game.X_MOVE, game=game, verbose=False)
+
+
+def puct_and_play(game):
+    policy = policies.TabularVTabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
+    history = train.puct(policy, game, selfplay_count=50000, batch_size=25, learning_rate=0.1)
     print(history)
     policy.temperature = 0.1
-    play(policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+    play(policy, game.X_MOVE, game=game, verbose=True)
 
 
-def puct_and_play333():
-
-    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=0.1, use_visits=False)
-    history = train.puct(policy, MNKGame333Tree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
-    print(history)
-    policy.temperature = 0.1
-    play(policy, MNKGame333Tree.O_MOVE, game=MNKGame333Tree, verbose=True)
-
-
-def puct_and_play_only_pi():
-    policy = policies.TabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
-    history = train.puct(policy, TicTacToeTree, selfplay_count=5000, batch_size=25, learning_rate=0.1)
+def puct_and_play_only_pi(game):
+    policy = policies.TabularVTabularPUCTPolicy(rollout_count=100, c=1, temperature=1, use_visits=True)
+    history = train.puct(policy, game, selfplay_count=5000, batch_size=25, learning_rate=0.1)
     print(history)
     play_policy = policies.GreedyTabularPiPolicy(pi_function=policy.pi_function)
-    play(play_policy, TicTacToeTree.O_MOVE, game=TicTacToeTree, verbose=True)
+    play(play_policy, game.O_MOVE, game=game, verbose=True)
 
 
 if __name__ == '__main__':
-    puct_and_play_only_pi()
-
+    play_mcts(ultimate.Ultimate433GameTree)

@@ -237,9 +237,11 @@ class MCTSPolicy(Policy, TreePolicy):
 
 class PUCTPolicy(MCTSPolicy):
 
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None):
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False):
         super().__init__(rollout_count, c, temperature, use_visits)
-        self.pi_function = pi_function or dict()
+
+    def predictor(self, context):
+        raise NotImplementedError
 
     def select(self, context: ContextTree):
         while True:
@@ -248,10 +250,10 @@ class PUCTPolicy(MCTSPolicy):
                 return context.history, context.reward
             max_bound = None
             selected_action = None
-            pi, _ = self.pi_function.setdefault(context.board, TabularPiPolicy.uniform(context.num_actions()))
+            p = self.predictor(context)
             for action in context.actions:
                 child = context(action)
-                child_bound = (context.move / child.move) * child.value + self.c * pi[action] * math.sqrt(context.visits) / (child.visits + 1)
+                child_bound = (context.move / child.move) * child.value + self.c * p[action] * math.sqrt(context.visits) / (child.visits + 1)
                 if max_bound is None or child_bound > max_bound:
                     max_bound = child_bound
                     selected_action = action
@@ -259,6 +261,17 @@ class PUCTPolicy(MCTSPolicy):
             if context.visits == 0:
                 context.visits += 1
                 return context.history, self.expand(context)
+
+
+class TabularPUCTPolicy(PUCTPolicy):
+
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None):
+        super().__init__(rollout_count, c, temperature, use_visits)
+        self.pi_function = pi_function or dict()
+
+    def predictor(self, context):
+        pi, _ = self.pi_function.get(context.board, TabularPiPolicy.uniform(context.num_actions()))
+        return pi
 
     def __call__(self, context):
         action, info = super().__call__(context)
@@ -290,12 +303,19 @@ class MCTSDefaultPolicy(MCTSPolicy, DefaultTreePolicy):
 
 class PUCTDefaultPolicy(PUCTPolicy, DefaultTreePolicy):
 
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, default_policy=None):
-        PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, default_policy=None):
+        PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits)
         DefaultTreePolicy.__init__(self, default_policy)
 
 
-class TabularTreePolicy(TreePolicy):
+class TabularPUCTDefaultPolicy(TabularPUCTPolicy, DefaultTreePolicy):
+
+    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, default_policy=None):
+        TabularPUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
+        DefaultTreePolicy.__init__(self, default_policy)
+
+
+class TabularVTreePolicy(TreePolicy):
 
     def __init__(self, v_function=None, max_init_value=0.01):
         self.v_function = v_function or dict()
@@ -308,15 +328,15 @@ class TabularTreePolicy(TreePolicy):
         return context.reward if context.done else self.v_function.setdefault(context.board, self.init())
 
 
-class TabularUCTPolicy(MCTSPolicy, TabularTreePolicy):
+class TabularVUCTPolicy(MCTSPolicy, TabularVTreePolicy):
 
     def __init__(self, rollout_num, c=1, temperature=1, use_visits=False, v_function=None):
         MCTSPolicy.__init__(self, rollout_num, c, temperature, use_visits)
-        TabularTreePolicy.__init__(self, v_function)
+        TabularVTreePolicy.__init__(self, v_function)
 
 
-class TabularPUCTPolicy(PUCTPolicy, TabularTreePolicy):
+class TabularVTabularPUCTPolicy(TabularPUCTPolicy, TabularVTreePolicy):
 
     def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, v_function=None):
-        PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
-        TabularTreePolicy.__init__(self, v_function)
+        TabularPUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
+        TabularVTreePolicy.__init__(self, v_function)

@@ -8,7 +8,8 @@ from contexts import Context
 
 def fit_q(policy: policies.TabularQPolicy, game: Type[Context], selfplay_count):
     visit_counts = dict()
-    for _ in tqdm(range(selfplay_count)):
+    progress = tqdm(range(selfplay_count))
+    for _ in progress:
         context = game.new()
         rollout = list()
         while not context.done:
@@ -21,9 +22,10 @@ def fit_q(policy: policies.TabularQPolicy, game: Type[Context], selfplay_count):
             action_rewards = policy.q_function.get(board, policy.init(game.num_actions()))
             action_rewards[action] += (context.reward - action_rewards[action]) / action_visit_counts[action]
             policy.q_function[board] = action_rewards
+        progress.set_postfix(size_q=len(policy.q_function))
 
 
-def policy_iteration(policy: policies.TabularVPolicy | policies.TabularUCTPolicy, game: Type[Context],
+def policy_iteration(policy: policies.TabularVPolicy | policies.TabularVUCTPolicy, game: Type[Context],
                      selfplay_count, batch_size, learning_rate):
     batch_count = selfplay_count // batch_size
     history = dict()
@@ -115,7 +117,7 @@ def direct_policy_iteration(policy: policies.MCTSDefaultPolicy, game: Type[Conte
     return history
 
 
-def puct(policy: policies.TabularPUCTPolicy, game: Type[Context], selfplay_count, batch_size, learning_rate):
+def puct(policy: policies.TabularVTabularPUCTPolicy, game: Type[Context], selfplay_count, batch_size, learning_rate):
     batch_count = selfplay_count // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
