@@ -1,7 +1,7 @@
 import random
 import math
 
-from contexts import Context, ContextTree
+from contexts import Context, ContextTree, ContextPredictor
 
 
 class Policy:
@@ -24,52 +24,6 @@ class ScorePolicy(Policy):
 
     def scores(self, context: Context) -> list:
         raise NotImplementedError
-
-
-class TabularQPolicy(ScorePolicy):
-
-    def __init__(self, q_function=None, max_init_q=0.01):
-        self.q_function = q_function or dict()
-        self.max_init_q = max_init_q
-
-    def scores(self, context: Context):
-        q_values = self.q_function.setdefault(context.board, self.init(context.num_actions()))
-        return [q_values[action] * context.move for action in context.actions]
-
-    def init(self, num_actions):
-        return [(2 * random.random() - 1) * self.max_init_q for _ in range(num_actions)]
-
-
-class TabularVPolicy(ScorePolicy):
-
-    def __init__(self, v_function=None, max_init_value=0.01):
-        self.v_function = v_function or dict()
-        self.max_init_value = max_init_value
-
-    def scores(self, context: Context):
-        values = list()
-        for action in context.actions:
-            virtual_board = context.apply(action)
-            value = self.v_function.setdefault(virtual_board, self.init())
-            values.append(value * context.move)
-        return values
-
-    def init(self):
-        return (2 * random.random() - 1) * self.max_init_value
-
-
-class TabularPiPolicy(ScorePolicy):
-
-    def __init__(self, pi_function=None):
-        self.pi_function = pi_function or dict()
-
-    def scores(self, context: Context):
-        _, scores = self.pi_function.setdefault(context.board, self.uniform(context.num_actions()))
-        return [scores[action] for action in context.actions]
-
-    @staticmethod
-    def uniform(num_actions: int):
-        return [1 / num_actions] * num_actions, [0.] * num_actions
 
 
 class GreedyPolicy(ScorePolicy):
@@ -117,52 +71,6 @@ class BoltzmannPolicy(ScorePolicy):
         }
 
 
-class GreedyTabularQPolicy(GreedyPolicy, TabularQPolicy):
-
-    def __init__(self, v_function=None):
-        TabularQPolicy.__init__(self, v_function)
-
-
-class GreedyTabularVPolicy(GreedyPolicy, TabularVPolicy):
-
-    def __init__(self, v_function=None):
-        TabularVPolicy.__init__(self, v_function)
-
-
-class GreedyTabularPiPolicy(GreedyPolicy, TabularPiPolicy):
-
-    def __init__(self, pi_function=None):
-        TabularPiPolicy.__init__(self, pi_function)
-
-
-class EpsilonGreedyTabularQPolicy(EpsilonGreedyPolicy, TabularQPolicy):
-
-    def __init__(self, epsilon, q_function=None):
-        EpsilonGreedyPolicy.__init__(self, epsilon)
-        TabularQPolicy.__init__(self, q_function)
-
-
-class BoltzmannTabularVPolicy(BoltzmannPolicy, TabularVPolicy):
-
-    def __init__(self, temperature=1., v_function=None):
-        BoltzmannPolicy.__init__(self, temperature)
-        TabularVPolicy.__init__(self, v_function)
-
-
-class BoltzmannTabularQPolicy(BoltzmannPolicy, TabularQPolicy):
-
-    def __init__(self, temperature=1., q_function=None):
-        BoltzmannPolicy.__init__(self, temperature)
-        TabularQPolicy.__init__(self, q_function)
-
-
-class BoltzmannTabularPiPolicy(BoltzmannPolicy, TabularPiPolicy):
-
-    def __init__(self, temperature=1., pi_function=None):
-        BoltzmannPolicy.__init__(self, temperature)
-        TabularPiPolicy.__init__(self, pi_function)
-
-
 class TreePolicy:
 
     def expand(self, context: ContextTree):
@@ -206,9 +114,11 @@ class MCTSPolicy(Policy, TreePolicy):
             context = child
 
     def __call__(self, context: ContextTree):
+        if context.visits == 0:
+            self.expand(context)
         for _ in range(self.rollout_count):
             history, reward = self.select(context)
-            MCTSPolicy.backward(context, history[len(context.history):], reward)
+            self.backward(context, history[len(context.history):], reward)
         actions = list()
         action_values = list()
         action_visits = list()
@@ -240,20 +150,16 @@ class PUCTPolicy(MCTSPolicy):
     def __init__(self, rollout_count, c=1, temperature=1, use_visits=False):
         super().__init__(rollout_count, c, temperature, use_visits)
 
-    def predictor(self, context):
-        raise NotImplementedError
-
-    def select(self, context: ContextTree):
+    def select(self, context: ContextPredictor):
         while True:
             context.visits += 1
             if context.done:
                 return context.history, context.reward
             max_bound = None
             selected_action = None
-            p = self.predictor(context)
             for action in context.actions:
                 child = context(action)
-                child_bound = (context.move / child.move) * child.value + self.c * p[action] * math.sqrt(context.visits) / (child.visits + 1)
+                child_bound = (context.move / child.move) * child.value + self.c * context.predictor[action] * math.sqrt(context.visits) / (child.visits + 1)
                 if max_bound is None or child_bound > max_bound:
                     max_bound = child_bound
                     selected_action = action
@@ -262,23 +168,10 @@ class PUCTPolicy(MCTSPolicy):
                 context.visits += 1
                 return context.history, self.expand(context)
 
-
-class TabularPUCTPolicy(PUCTPolicy):
-
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None):
-        super().__init__(rollout_count, c, temperature, use_visits)
-        self.pi_function = pi_function or dict()
-
-    def predictor(self, context):
-        pi, _ = self.pi_function.get(context.board, TabularPiPolicy.uniform(context.num_actions()))
-        return pi
-
-    def __call__(self, context):
+    def __call__(self, context: ContextPredictor):
         action, info = super().__call__(context)
-        pi, scores = self.pi_function.get(context.board, TabularPiPolicy.uniform(context.num_actions()))
         info['policy'] = 'puct'
-        info['pi'] = {action: pi[action] for action in context.actions}
-        info['scores'] = {action: scores[action] for action in context.actions}
+        info['predictors'] = {action: context.predictor[action] for action in context.actions}
         return action, info
 
 
@@ -306,37 +199,3 @@ class PUCTDefaultPolicy(PUCTPolicy, DefaultTreePolicy):
     def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, default_policy=None):
         PUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits)
         DefaultTreePolicy.__init__(self, default_policy)
-
-
-class TabularPUCTDefaultPolicy(TabularPUCTPolicy, DefaultTreePolicy):
-
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, default_policy=None):
-        TabularPUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
-        DefaultTreePolicy.__init__(self, default_policy)
-
-
-class TabularVTreePolicy(TreePolicy):
-
-    def __init__(self, v_function=None, max_init_value=0.01):
-        self.v_function = v_function or dict()
-        self.max_init_value = max_init_value
-
-    def init(self):
-        return (2 * random.random() - 1) * self.max_init_value
-
-    def expand(self, context):
-        return context.reward if context.done else self.v_function.setdefault(context.board, self.init())
-
-
-class TabularVUCTPolicy(MCTSPolicy, TabularVTreePolicy):
-
-    def __init__(self, rollout_num, c=1, temperature=1, use_visits=False, v_function=None):
-        MCTSPolicy.__init__(self, rollout_num, c, temperature, use_visits)
-        TabularVTreePolicy.__init__(self, v_function)
-
-
-class TabularVTabularPUCTPolicy(TabularPUCTPolicy, TabularVTreePolicy):
-
-    def __init__(self, rollout_count, c=1, temperature=1, use_visits=False, pi_function=None, v_function=None):
-        TabularPUCTPolicy.__init__(self, rollout_count, c, temperature, use_visits, pi_function)
-        TabularVTreePolicy.__init__(self, v_function)

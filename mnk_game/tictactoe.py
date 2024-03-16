@@ -1,6 +1,6 @@
 from colorama import Fore, Style
 
-from contexts import Context, ContextTree
+from contexts import Context, ContextTree, ContextPredictor
 
 
 class TicTacToe(Context):
@@ -140,6 +140,10 @@ class TicTacToeTree(ContextTree, TicTacToe):
     pass
 
 
+class TicTacToePredictor(ContextPredictor, TicTacToe):
+    pass
+
+
 class MNKGame433(TicTacToe):
     WIDTH = 4
     HEIGHT = 3
@@ -166,6 +170,10 @@ class MNKGame433Tree(MNKGame433, ContextTree):
     pass
 
 
+class MNKGame433Predictor(MNKGame433, ContextPredictor):
+    pass
+
+
 class MNKGame444(TicTacToe):
     WIDTH = 4
     HEIGHT = 4
@@ -185,4 +193,8 @@ class MNKGame444(TicTacToe):
 
 
 class MNKGame444Tree(MNKGame444, ContextTree):
+    pass
+
+
+class MNKGame444Predictor(MNKGame444, ContextPredictor):
     pass

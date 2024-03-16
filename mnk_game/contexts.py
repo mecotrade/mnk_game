@@ -39,10 +39,21 @@ class ContextTree(Context):
     def __call__(self, action):
         child = self.children[action]
         if child is None:
-            child = super().__call__(action)
+            child = Context.__call__(self, action)
             child.parent = self
             self.children[action] = child
         return child
 
     def of(self, action):
-        return super().__call__(action)
+        return Context.__call__(self, action)
+
+
+class ContextPredictor(ContextTree):
+
+    def __init__(self, board, history: list | None = None):
+        super().__init__(board, history)
+        self.predictor = self.uniform_predictor()
+
+    @classmethod
+    def uniform_predictor(cls):
+        return [1 / cls.num_actions()] * cls.num_actions()
