@@ -1,0 +1,5 @@
+torch~=2.2.1
+colorama~=0.4.6
+tqdm~=4.65.0
+numpy~=1.24.3
+tensorboard

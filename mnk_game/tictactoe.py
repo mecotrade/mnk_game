@@ -1,12 +1,10 @@
+import numpy as np
 from colorama import Fore, Style
 
 from contexts import Context, ContextTree, ContextPredictor
 
 
 class TicTacToe(Context):
-
-    X_MOVE = 1
-    O_MOVE = -1
 
     WIDTH = 3
     HEIGHT = 3
@@ -30,6 +28,16 @@ class TicTacToe(Context):
     @classmethod
     def num_actions(cls):
         return cls.NUM_ACTIONS
+
+    @classmethod
+    def shape(cls) -> tuple:
+        # channels: width, height, move (all 1 for X, all -1 for o)
+        return cls.WIDTH, cls.HEIGHT, 3
+
+    def features(self):
+        board_x, board_o = self.board
+        return np.array([self.to_bits(board_x), self.to_bits(board_o),
+                         [(self.move + 1) / 2] * self.num_actions()], dtype=np.float32).reshape(self.shape())
 
     @classmethod
     def calculate_reward(cls, board):

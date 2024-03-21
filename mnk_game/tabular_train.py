@@ -2,14 +2,14 @@ import math
 from typing import Type
 from tqdm import tqdm
 
-import tabular_policies as tp
+import tabular_policies
 from policies import MCTSDefaultPolicy
 from contexts import Context, ContextTree, ContextPredictor
 
 
-def fit_q(policy: tp.TabularQPolicy, game: Type[Context], selfplay_count):
+def fit_q(policy: tabular_policies.TabularQPolicy, game: Type[Context], num_games):
     visit_counts = dict()
-    progress = tqdm(range(selfplay_count))
+    progress = tqdm(range(num_games))
     for _ in progress:
         context = game.new()
         rollout = list()
@@ -26,9 +26,9 @@ def fit_q(policy: tp.TabularQPolicy, game: Type[Context], selfplay_count):
         progress.set_postfix(size_q=len(policy.q_function))
 
 
-def policy_iteration(policy: tp.TabularVPolicy | tp.TabularVUCTPolicy, game: Type[Context],
-                     selfplay_count, batch_size, learning_rate):
-    batch_count = selfplay_count // batch_size
+def policy_iteration(policy: tabular_policies.TabularVPolicy | tabular_policies.TabularVUCTPolicy, game: Type[Context],
+                     num_games, batch_size, learning_rate):
+    batch_count = num_games // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
     for _ in progress:
@@ -55,8 +55,9 @@ def policy_iteration(policy: tp.TabularVPolicy | tp.TabularVUCTPolicy, game: Typ
     return history
 
 
-def q_policy_iteration(policy: tp.TabularQPolicy, game: Type[Context], selfplay_count, batch_size, learning_rate):
-    batch_count = selfplay_count // batch_size
+def q_policy_iteration(policy: tabular_policies.TabularQPolicy, game: Type[Context],
+                       num_games, batch_size, learning_rate):
+    batch_count = num_games // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
     for _ in progress:
@@ -85,9 +86,9 @@ def q_policy_iteration(policy: tp.TabularQPolicy, game: Type[Context], selfplay_
 
 
 def direct_policy_iteration(policy: MCTSDefaultPolicy, game: Type[ContextTree],
-                            selfplay_count, batch_size, learning_rate):
-    assert isinstance(policy.default_policy, tp.TabularPiPolicy)
-    batch_count = selfplay_count // batch_size
+                            num_games, batch_size, learning_rate):
+    assert isinstance(policy.default_policy, tabular_policies.TabularPiPolicy)
+    batch_count = num_games // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
     for _ in progress:
@@ -118,8 +119,9 @@ def direct_policy_iteration(policy: MCTSDefaultPolicy, game: Type[ContextTree],
     return history
 
 
-def puct_predictor_iteration(policy: tp.TabularPUCTPolicy, game: Type[ContextPredictor], selfplay_count, batch_size, learning_rate):
-    batch_count = selfplay_count // batch_size
+def puct_predictor_iteration(policy: tabular_policies.TabularPUCTPolicy, game: Type[ContextPredictor],
+                             num_games, batch_size, learning_rate):
+    batch_count = num_games // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
     for _ in progress:
@@ -157,8 +159,9 @@ def puct_predictor_iteration(policy: tp.TabularPUCTPolicy, game: Type[ContextPre
     return history
 
 
-def puct_v_iteration(policy: tp.TabularVTabularPUCTPolicy, game: Type[ContextPredictor], selfplay_count, batch_size, learning_rate):
-    batch_count = selfplay_count // batch_size
+def puct_v_iteration(policy: tabular_policies.TabularVTabularPUCTPolicy, game: Type[ContextPredictor],
+                     num_games, batch_size, learning_rate):
+    batch_count = num_games // batch_size
     history = dict()
     progress = tqdm(range(batch_count))
     for _ in progress:

@@ -1,6 +1,7 @@
+import numpy as np
 from colorama import Fore, Style
 
-from contexts import ContextTree
+from contexts import ContextTree, ContextPredictor
 from tictactoe import TicTacToe, MNKGame433, MNKGame444
 
 
@@ -14,6 +15,20 @@ class UltimateTicTacToe(TicTacToe):
     @classmethod
     def num_actions(cls):
         return cls.NUM_ACTIONS * cls.NUM_ACTIONS
+
+    @classmethod
+    def shape(cls):
+        # channels: width, height, boards and move
+        # width * height sub-boards and one super-board for both X and O, and 1 move channel
+        return cls.WIDTH, cls.HEIGHT, 2 * (cls.WIDTH * cls.HEIGHT + 1) + 1
+
+    def features(self):
+        sub_boards_x, sub_boards_o, super_board_x, super_board_o = self.board
+        return np.concatenate([np.array([self.to_bits(sub_board_x) for sub_board_x in sub_boards_x]),
+                               np.array(self.to_bits(super_board_x))[np.newaxis, :],
+                               np.array([self.to_bits(sub_board_o) for sub_board_o in sub_boards_o]),
+                               np.array(self.to_bits(super_board_o))[np.newaxis, :],
+                               np.full((1, self.WIDTH * self.HEIGHT), (self.move + 1) / 2)], dtype=np.float32).T.reshape(self.shape())
 
     def calculate_actions(self):
         if self.history:
@@ -126,6 +141,10 @@ class UltimateTicTacToe(TicTacToe):
 
 
 class UltimateTicTacToeTree(UltimateTicTacToe, ContextTree):
+    pass
+
+
+class UltimateTicTacToePredictor(UltimateTicTacToe, ContextPredictor):
     pass
 
 

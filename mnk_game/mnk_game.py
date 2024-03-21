@@ -1,3 +1,4 @@
+import numpy as np
 from colorama import Fore, Style
 
 from contexts import Context, ContextTree
@@ -9,9 +10,6 @@ class MNKGame(Context):
     HEIGHT = None
     LINE = None
 
-    X_MOVE = 1
-    O_MOVE = -1
-
     @classmethod
     def new(cls):
         return cls(((0,) * cls.num_actions(), (0,) * cls.num_actions()))
@@ -19,6 +17,14 @@ class MNKGame(Context):
     @classmethod
     def num_actions(cls):
         return cls.WIDTH * cls.HEIGHT
+
+    @classmethod
+    def shape(cls):
+        return cls.WIDTH, cls.HEIGHT, 3
+
+    def features(self):
+        board_x, board_o = self.board
+        return np.array([board_x, board_o, ((self.move + 1) / 2,) * self.num_actions()], dtype=np.float32).reshape(self.shape())
 
     @classmethod
     def calculate_reward(cls, board):

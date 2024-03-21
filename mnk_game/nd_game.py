@@ -73,6 +73,10 @@ class TicTacToe3D(TicTacToe):
         0b_000_000_001_000_010_000_100_000_000
     ]
 
+    @classmethod
+    def shape(cls):
+        return cls.WIDTH, cls.HEIGHT, cls.DEPTH, 3
+
     def print_board(self):
         board_x, board_o = self.board
         _, position_x = self.calculate_reward(board_x)

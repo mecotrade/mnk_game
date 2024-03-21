@@ -1,5 +1,8 @@
 class Context:
 
+    X_MOVE = 1
+    O_MOVE = -1
+
     def __init__(self, board, history: list | None = None):
         self.board = board
         self.history = history or list()
@@ -11,6 +14,13 @@ class Context:
 
     @classmethod
     def num_actions(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def shape(cls) -> tuple:
+        raise NotImplementedError
+
+    def features(self):
         raise NotImplementedError
 
     def analyze(self) -> (float, bool, int, list):
